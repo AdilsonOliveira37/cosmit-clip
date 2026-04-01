@@ -1,7 +1,7 @@
 use crate::state;
 use std::io::Write;
 use std::process::{Command, Stdio};
-use wl_clipboard_rs::copy::{MimeType, Options, Source};
+use std::path::PathBuf;
 
 pub fn run_show() {
     let state = state::load_state();
@@ -10,16 +10,36 @@ pub fn run_show() {
         return;
     }
 
-    // Format for display to avoid breaking dmenu structure on multiline
+    // Format for display: one line per item, newest first
     let input_lines: Vec<String> = state.history.iter().enumerate().rev().map(|(i, text)| {
         let single_line: String = text.replace('\n', " ").chars().take(80).collect();
         format!("{}: {}", i, single_line)
     }).collect();
-    
+
     let input_text = input_lines.join("\n");
 
+    // CSS path instalado pelo justfile
+    let css_path: Option<PathBuf> = std::env::var("HOME")
+        .ok()
+        .map(|h| PathBuf::from(h).join(".config/wofi/cosmic-clip.css"));
+
+    let mut wofi_args: Vec<String> = vec![
+        "--show".into(),
+        "dmenu".into(),
+        "--prompt".into(),
+        "📋 Clipboard".into(),
+        "--insensitive".into(),
+    ];
+
+    if let Some(ref css) = css_path {
+        if css.exists() {
+            wofi_args.push("--style".into());
+            wofi_args.push(css.to_string_lossy().into_owned());
+        }
+    }
+
     let child = Command::new("wofi")
-        .args(["--show", "dmenu", "--prompt", "Clipboard"])
+        .args(&wofi_args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -38,14 +58,24 @@ pub fn run_show() {
 
         if let Ok(output) = child.wait_with_output() {
             let selected = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if selected.is_empty() {
+                return; // Usuário cancelou
+            }
+
             if let Some(idx_str) = selected.split(':').next() {
                 if let Ok(idx) = idx_str.parse::<usize>() {
                     if let Some(text) = state.history.get(idx) {
-                        let opts = Options::new();
-                        let _ = opts.copy(
-                            Source::Bytes(text.clone().into_bytes().into()),
-                            MimeType::Autodetect
-                        );
+                        // Usa wl-copy para escrever no clipboard (mais confiável em headless)
+                        let mut wl_copy = Command::new("wl-copy")
+                            .stdin(Stdio::piped())
+                            .spawn()
+                            .expect("Falha ao executar wl-copy. Instale: sudo apt install wl-clipboard");
+
+                        if let Some(mut stdin) = wl_copy.stdin.take() {
+                            let _ = stdin.write_all(text.as_bytes());
+                        }
+                        let _ = wl_copy.wait();
+                        println!("Clipboard atualizado com: {:?}", &text.chars().take(40).collect::<String>());
                     }
                 }
             }

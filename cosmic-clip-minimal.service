@@ -1,0 +1,10 @@
+[Unit]
+Description=COSMIC Minimal Clipboard Daemon
+After=wayland-session.target
+
+[Service]
+ExecStart=%h/.local/bin/cosmic-clip-minimal daemon
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

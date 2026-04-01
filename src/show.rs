@@ -10,13 +10,13 @@ pub fn run_show() {
         return;
     }
 
-    // Format for display: one line per item, newest first
-    let input_lines: Vec<String> = state.history.iter().enumerate().rev().map(|(i, text)| {
-        let single_line: String = text.replace('\n', " ").chars().take(80).collect();
-        format!("{}: {}", i, single_line)
+    // Lista do mais recente (topo) ao mais antigo (baixo).
+    // Cada linha é um preview de 80 chars em uma única linha.
+    let previews: Vec<String> = state.history.iter().rev().map(|text| {
+        text.replace('\n', " ").chars().take(80).collect()
     }).collect();
 
-    let input_text = input_lines.join("\n");
+    let input_text = previews.join("\n");
 
     // CSS path instalado pelo justfile
     let css_path: Option<PathBuf> = std::env::var("HOME")
@@ -57,30 +57,32 @@ pub fn run_show() {
         }
 
         if let Ok(output) = child.wait_with_output() {
-            let selected = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if selected.is_empty() {
+            let selected_preview = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if selected_preview.is_empty() {
                 return; // Usuário cancelou
             }
 
-            if let Some(idx_str) = selected.split(':').next() {
-                if let Ok(idx) = idx_str.parse::<usize>() {
-                    if let Some(text) = state.history.get(idx) {
-                        // Usa wl-copy para escrever no clipboard (mais confiável em headless)
-                        let mut wl_copy = Command::new("wl-copy")
-                            .stdin(Stdio::piped())
-                            .spawn()
-                            .expect("Falha ao executar wl-copy. Instale: sudo apt install wl-clipboard");
+            // Busca o texto completo correspondente ao preview selecionado.
+            // Itera do mais recente pro mais antigo para pegar a cópia mais nova em caso de duplicatas.
+            let found = state.history.iter().rev().find(|text| {
+                let preview: String = text.replace('\n', " ").chars().take(80).collect();
+                preview == selected_preview
+            });
 
-                        if let Some(mut stdin) = wl_copy.stdin.take() {
-                            let _ = stdin.write_all(text.as_bytes());
-                        }
-                        let _ = wl_copy.wait();
-                        println!("Clipboard atualizado com: {:?}", &text.chars().take(40).collect::<String>());
-                    }
+            if let Some(text) = found {
+                let mut wl_copy = Command::new("wl-copy")
+                    .stdin(Stdio::piped())
+                    .spawn()
+                    .expect("Falha ao executar wl-copy. Instale: sudo apt install wl-clipboard");
+
+                if let Some(mut stdin) = wl_copy.stdin.take() {
+                    let _ = stdin.write_all(text.as_bytes());
                 }
+                let _ = wl_copy.wait();
+                println!("Clipboard atualizado com: {:?}", &text.chars().take(40).collect::<String>());
             }
         }
     } else {
-        println!("Fuzzy finder not found (wofi or fuzzel needed).");
+        println!("Fuzzy finder not found (wofi ou fuzzel needed).");
     }
 }

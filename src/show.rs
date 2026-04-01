@@ -12,11 +12,11 @@ pub fn run_show() {
 
     // Build preview list: newest first.
     // Each line is prefixed with a 1-based position number so that:
-    //   a) wofi exibe na ordem correta (sem reordenar alfabeticamente)
-    //   b) podemos recuperar o item pelo número mesmo que o wofi
-    //      remova os espaços iniciais antes de devolver a seleção.
+    //   a) wofi displays in the correct order (without reordering alphabetically)
+    //   b) we can retrieve the item by number even if wofi
+    //      removes the leading spaces before returning the selection.
     //
-    // Formato: "1 | preview text" (sem espaços iniciais para não depender do wofi)
+    // Format: "1 | preview text" (no leading spaces to avoid depending on wofi)
     let items: Vec<(usize, String)> = state.history
         .iter()
         .rev()
@@ -66,7 +66,7 @@ pub fn run_show() {
         });
 
     let Ok(mut child) = launcher else {
-        eprintln!("❌ Fuzzy finder não encontrado (wofi ou fuzzel necessário).");
+        eprintln!("❌ Fuzzy finder not found (wofi or fuzzel required).");
         return;
     };
 
@@ -80,24 +80,24 @@ pub fn run_show() {
 
     let selected_line = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if selected_line.is_empty() {
-        return; // usuário cancelou
+        return; // user cancelled
     }
 
-    eprintln!("[DEBUG] Selecionado: {:?}", &selected_line);
+    eprintln!("[DEBUG] Selected: {:?}", &selected_line);
 
-    // Recupera o item pelo índice numérico no prefixo ("N | preview").
-    // Isso é robusto contra o wofi remover/alterar espaços: basta parsear
-    // o número antes do primeiro " | ".
+    // Retrieve the item by the numeric index in the prefix ("N | preview").
+    // This is robust against wofi removing/altering spaces: just parse
+    // the number before the first " | ".
     let found_text: Option<String> = selected_line
         .split_once(" | ")
         .and_then(|(num_str, _)| num_str.trim().parse::<usize>().ok())
         .and_then(|pos_1based| {
-            // pos_1based é 1-indexed → converte para índice em `items`
+            // pos_1based is 1-indexed → convert to index in `items`
             let idx = pos_1based.checked_sub(1)?;
             let (rev_idx, _) = items.get(idx)?;
             state.history.iter().rev().nth(*rev_idx).cloned()
         })
-        // Fallback: busca pelo conteúdo do preview caso o parse falhe
+        // Fallback: search by preview content if parsing fails
         .or_else(|| {
             let preview_part = selected_line
                 .split_once(" | ")
@@ -110,30 +110,30 @@ pub fn run_show() {
         });
 
     let Some(text) = found_text else {
-        eprintln!("❌ Não foi possível encontrar o item no histórico.");
-        eprintln!("   Linha retornada pelo wofi: {:?}", selected_line);
+        eprintln!("❌ Could not find the item in the history.");
+        eprintln!("   Line returned by wofi: {:?}", selected_line);
         return;
     };
 
-    eprintln!("[DEBUG] Copiando para clipboard: {:?}", &text.chars().take(40).collect::<String>());
+    eprintln!("[DEBUG] Copying to clipboard: {:?}", &text.chars().take(40).collect::<String>());
 
-    // Escreve no clipboard via wl-copy SEM chamar .wait().
-    // No Wayland o clipboard funciona como servidor: o processo que escreveu
-    // precisa ficar vivo para responder ao Ctrl+V. Ao não chamar .wait(),
-    // o wl-copy continua rodando em background como dono do clipboard até
-    // que outra app copie algo novo.
+    // Write to clipboard via wl-copy WITHOUT calling .wait().
+    // On Wayland the clipboard acts as a server: the process that wrote
+    // needs to stay alive to answer to Ctrl+V. By not calling .wait(),
+    // wl-copy keeps running in the background as the clipboard owner until
+    // another app copies something new.
     match Command::new("wl-copy").stdin(Stdio::piped()).spawn() {
         Ok(mut wl_copy) => {
             if let Some(mut stdin) = wl_copy.stdin.take() {
                 let _ = stdin.write_all(text.as_bytes());
-                // fechar o stdin sinaliza EOF → wl-copy sabe que recebeu tudo
+                // closing stdin signals EOF → wl-copy knows it received everything
             }
-            // drop do handle NÃO mata o processo — ele continua servindo Ctrl+V
+            // dropping the handle DOES NOT kill the process — it keeps serving Ctrl+V
             println!("✅ Clipboard: {:?}", &text.chars().take(40).collect::<String>());
         }
         Err(e) => {
-            eprintln!("❌ wl-copy não encontrado: {e}");
-            eprintln!("   Instale com: sudo apt install wl-clipboard");
+            eprintln!("❌ wl-copy not found: {e}");
+            eprintln!("   Install with: sudo apt install wl-clipboard");
         }
     }
 }

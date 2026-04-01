@@ -12,8 +12,7 @@ pub fn run_show() {
 
     // Format for display to avoid breaking dmenu structure on multiline
     let input_lines: Vec<String> = state.history.iter().enumerate().rev().map(|(i, text)| {
-        let mut single_line = text.replace('\n', " ");
-        single_line.truncate(80); // take first 80 chars
+        let single_line: String = text.replace('\n', " ").chars().take(80).collect();
         format!("{}: {}", i, single_line)
     }).collect();
     

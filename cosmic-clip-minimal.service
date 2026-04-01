@@ -1,10 +1,14 @@
 [Unit]
 Description=COSMIC Minimal Clipboard Daemon
-After=wayland-session.target
+PartOf=graphical-session.target
+After=graphical-session.target
 
 [Service]
 ExecStart=%h/.local/bin/cosmic-clip-minimal daemon
 Restart=on-failure
+RestartSec=2
+# Garantir que as variáveis do Wayland estejam disponíveis
+PassEnvironment=WAYLAND_DISPLAY XDG_RUNTIME_DIR DISPLAY
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target

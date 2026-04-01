@@ -1,7 +1,15 @@
 [package]
 name = "cosmic-clip-minimal"
 version = "0.1.0"
-edition = "2021"
+edition = "2026"
+description = "A minimal, event-driven Wayland clipboard history manager for Pop!_OS COSMIC"
+license = "MIT"
+repository = "https://github.com/adilsonoliveira37/cosmic-clip-minimal"
+homepage = "https://github.com/adilsonoliveira37/cosmic-clip-minimal"
+readme = "README.md"
+keywords = ["clipboard", "wayland", "clipboard-manager", "cosmic", "linux"]
+categories = ["command-line-utilities", "os::linux-apis"]
+authors = ["Adilson Oliveira <adilsonreisoliveira.98@gmail.com>"]
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }

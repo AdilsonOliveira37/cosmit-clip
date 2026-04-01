@@ -8,4 +8,13 @@ install:
 	systemctl --user enable --now cosmic-clip-minimal.service
 	@echo ""
 	@echo "✅ Instalação concluída!"
-	@echo "⚠️  Dependência necessária (se ainda não instalada): sudo apt install wl-clipboard"
+	@echo "⚠️  Dependências necessárias (se ainda não instaladas): sudo apt install wl-clipboard wofi"
+
+uninstall:
+	-systemctl --user disable --now cosmic-clip-minimal.service
+	rm -f ~/.local/bin/cosmic-clip-minimal
+	rm -f ~/.config/systemd/user/cosmic-clip-minimal.service
+	rm -f ~/.config/wofi/cosmic-clip.css
+	rm -f /tmp/cosmic-clip-minimal.json
+	systemctl --user daemon-reload
+	@echo "✅ Desinstalação concluída!"

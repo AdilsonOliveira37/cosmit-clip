@@ -31,11 +31,9 @@ pub fn run_show() {
         "--insensitive".into(),
     ];
 
-    if let Some(ref css) = css_path {
-        if css.exists() {
-            wofi_args.push("--style".into());
-            wofi_args.push(css.to_string_lossy().into_owned());
-        }
+    if let Some(ref css) = css_path.filter(|p| p.exists()) {
+        wofi_args.push("--style".into());
+        wofi_args.push(css.to_string_lossy().into_owned());
     }
 
     let child = Command::new("wofi")

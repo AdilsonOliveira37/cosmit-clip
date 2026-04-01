@@ -10,15 +10,14 @@ pub fn run_show() {
         return;
     }
 
-    // Lista do mais recente (topo) ao mais antigo (baixo).
-    // Cada linha é um preview de 80 chars em uma única linha.
+    // Build preview list: newest first, one line each (max 80 chars)
     let previews: Vec<String> = state.history.iter().rev().map(|text| {
         text.replace('\n', " ").chars().take(80).collect()
     }).collect();
 
     let input_text = previews.join("\n");
 
-    // CSS path instalado pelo justfile
+    // CSS path installed by justfile
     let css_path: Option<PathBuf> = std::env::var("HOME")
         .ok()
         .map(|h| PathBuf::from(h).join(".config/wofi/cosmic-clip.css"));
@@ -57,11 +56,11 @@ pub fn run_show() {
         if let Ok(output) = child.wait_with_output() {
             let selected_preview = String::from_utf8_lossy(&output.stdout).trim().to_string();
             if selected_preview.is_empty() {
-                return; // Usuário cancelou
+                return; // user cancelled
             }
 
-            // Busca o texto completo correspondente ao preview selecionado.
-            // Itera do mais recente pro mais antigo para pegar a cópia mais nova em caso de duplicatas.
+            // Find the full text matching the selected preview.
+            // Iterates newest-first so duplicates resolve to the most recent copy.
             let found = state.history.iter().rev().find(|text| {
                 let preview: String = text.replace('\n', " ").chars().take(80).collect();
                 preview == selected_preview
@@ -71,16 +70,16 @@ pub fn run_show() {
                 let mut wl_copy = Command::new("wl-copy")
                     .stdin(Stdio::piped())
                     .spawn()
-                    .expect("Falha ao executar wl-copy. Instale: sudo apt install wl-clipboard");
+                    .expect("wl-copy not found. Install it with: sudo apt install wl-clipboard");
 
                 if let Some(mut stdin) = wl_copy.stdin.take() {
                     let _ = stdin.write_all(text.as_bytes());
                 }
                 let _ = wl_copy.wait();
-                println!("Clipboard atualizado com: {:?}", &text.chars().take(40).collect::<String>());
+                println!("Clipboard updated: {:?}", &text.chars().take(40).collect::<String>());
             }
         }
     } else {
-        println!("Fuzzy finder not found (wofi ou fuzzel needed).");
+        println!("Fuzzy finder not found (wofi or fuzzel required).");
     }
 }
